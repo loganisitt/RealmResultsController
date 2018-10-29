@@ -10,11 +10,11 @@ import Foundation
 import UIKit
 import RealmSwift
 
-public enum RealmResultsChangeType: String {
-    case Insert
-    case Delete
-    case Update
-    case Move
+public enum RealmResultsChangeType: Int {
+    case insert
+    case delete
+    case update
+    case move
 }
 
 public protocol RealmResultsControllerDelegate: class {
@@ -69,6 +69,10 @@ public class RealmResultsController<T: RealmSwift.Object, U> : RealmResultsCache
     var temporaryAdded: [T] = []
     var temporaryUpdated: [T] = []
     var temporaryDeleted: [T] = []
+
+    public var fetchedObjects: [U] {
+        return cache.sections.reduce([U](), { $0 + $1.allObjects.map({ mapper($0) })})
+    }
 
     /**
     All results separated by the sectionKeyPath in RealmSection<U>
@@ -180,10 +184,12 @@ public class RealmResultsController<T: RealmSwift.Object, U> : RealmResultsCache
     public func performFetch() {
         populating = true
         var objects = self.request.execute().toArray().map{ $0.getMirror() }
-        if let filter = filter {
+        if let filter = filter as? ((Object) -> Bool) {
             objects = objects.filter(filter)
         }
-        self.cache.reset(with: objects)
+        if let resetObjects = objects as? [T] {
+            self.cache.reset(with: resetObjects)
+        }
         populating = false
         if !observerAdded { self.addNotificationObservers() }
     }
@@ -222,7 +228,7 @@ public class RealmResultsController<T: RealmSwift.Object, U> : RealmResultsCache
     // At this point, we are sure sorts.first always has a SortDescriptor
     private func keyPathIsValid(_ keyPath: String?, sorts: [RealmSwift.SortDescriptor]) -> Bool {
         if keyPath == nil { return true }
-        return keyPath == sorts.first!.property
+        return keyPath == sorts.first!.keyPath
     }
     
     private func realmSectionMapper<S>(_ section: Section<S>) -> RealmSection<U> {
@@ -234,7 +240,7 @@ public class RealmResultsController<T: RealmSwift.Object, U> : RealmResultsCache
     
     func didInsert<T: RealmSwift.Object>(_ object: T, indexPath: IndexPath) {
         Threading.executeOnMainThread {
-            self.delegate?.didChangeObject(self, object: object, oldIndexPath: indexPath, newIndexPath: indexPath, changeType: .Insert)
+            self.delegate?.didChangeObject(self, object: object, oldIndexPath: indexPath, newIndexPath: indexPath, changeType: .insert)
         }
     }
     
@@ -246,20 +252,20 @@ public class RealmResultsController<T: RealmSwift.Object, U> : RealmResultsCache
     
     func didDelete<T: RealmSwift.Object>(_ object: T, indexPath: IndexPath) {
         Threading.executeOnMainThread {
-            self.delegate?.didChangeObject(self, object: object, oldIndexPath: indexPath, newIndexPath: indexPath, changeType: .Delete)
+            self.delegate?.didChangeObject(self, object: object, oldIndexPath: indexPath, newIndexPath: indexPath, changeType: .delete)
         }
     }
     
     func didInsertSection<T : RealmSwift.Object>(_ section: Section<T>, index: Int) {
         if populating { return }
         Threading.executeOnMainThread {
-            self.delegate?.didChangeSection(self, section: self.realmSectionMapper(section), index: index, changeType: .Insert)
+            self.delegate?.didChangeSection(self, section: self.realmSectionMapper(section), index: index, changeType: .insert)
         }
     }
     
     func didDeleteSection<T : RealmSwift.Object>(_ section: Section<T>, index: Int) {
         Threading.executeOnMainThread {
-            self.delegate?.didChangeSection(self, section: self.realmSectionMapper(section), index: index, changeType: .Delete)
+            self.delegate?.didChangeSection(self, section: self.realmSectionMapper(section), index: index, changeType: .delete)
         }
     }
     

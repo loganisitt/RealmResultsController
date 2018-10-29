@@ -87,7 +87,7 @@ class RealmResultsCache<T: Object> {
             // If the object was already deleted, then is a MOVE, and the insert/deleted
             // should be wrapped in only one operation to the delegate
             guard let oldIndexPath = temporalDeletionsIndexPath[object] else { continue }
-            delegate?.didUpdate(object, oldIndexPath: oldIndexPath, newIndexPath: indexPath, changeType: RealmResultsChangeType.Move)
+            delegate?.didUpdate(object, oldIndexPath: oldIndexPath, newIndexPath: indexPath, changeType: RealmResultsChangeType.move)
             guard let index = temporalDeletions.index(of: object) else { continue }
             temporalDeletions.remove(at: index)
             temporalDeletionsIndexPath.removeValue(forKey: object)
@@ -144,7 +144,7 @@ class RealmResultsCache<T: Object> {
             _ = oldSection.deleteOutdatedObject(object)
             let newIndexRow = oldSection.insertSorted(object)
             let newIndexPath = IndexPath(row: newIndexRow, section: oldSectionIndex)
-            delegate?.didUpdate(object, oldIndexPath: oldIndexPath, newIndexPath: newIndexPath, changeType: .Update)
+            delegate?.didUpdate(object, oldIndexPath: oldIndexPath, newIndexPath: newIndexPath, changeType: .update)
         }
     }
 
@@ -275,6 +275,6 @@ class RealmResultsCache<T: Object> {
     :returns: NSSortDescriptor
     */
     private func toNSSortDescriptor(_ sort: SortDescriptor) -> NSSortDescriptor {
-        return NSSortDescriptor(key: sort.property, ascending: sort.ascending)
+        return NSSortDescriptor(key: sort.keyPath, ascending: sort.ascending)
     }
 }

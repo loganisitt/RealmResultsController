@@ -110,27 +110,31 @@ extension Realm {
     - returns: The created object.
     */
     @discardableResult
-    public func createNotified<T: RealmSwift.Object>(_ type: T.Type, value: Any = [:], update upd: Bool = false) -> T? {
+    public func createNotified<T: RealmSwift.Object>(_ type: T.Type, value: Any?, update upd: Bool = false) -> T {
         var update = upd
-        let createBlock = {
-            return self.create(type, value: value, update: update)
-        }
-        
         var isCreate = true
-        guard let primaryKey = T.primaryKey(), let primaryKeyValue = (value as AnyObject).value(forKey: primaryKey) else { return nil }
-        
-        if let _ = object(ofType: type, forPrimaryKey: primaryKeyValue) {
-            isCreate = false
-            update = true
+
+        if let primaryKey = T.primaryKey(), let primaryKeyValue = (value as AnyObject).value(forKey: primaryKey) {
+            if let _ = object(ofType: type, forPrimaryKey: primaryKeyValue) {
+                isCreate = false
+                update = true
+            }
         }
-        let createdObject = createBlock()
-        
+
+        let createdObject: T
+        if let value = value {
+            createdObject = create(type, value: value, update: update)
+        } else {
+            createdObject = create(type, update: update)
+        }
+
         if isCreate {
             RealmNotification.logger(for: self).didAdd(createdObject)
         }
         else {
             RealmNotification.logger(for: self).didUpdate(createdObject)
         }
+        
         return createdObject
     }
     
@@ -191,10 +195,11 @@ extension Results {
     
     - returns Array<T>
     */
-    func toArray() -> [T] {
+    func toArray<T: RealmSwift.Object>() -> [T] {
         var array = [T]()
         for result in self {
-            array.append(result)
+            guard let checkResult = result as? T else { continue }
+            array.append(checkResult)
         }
         return array
     }
